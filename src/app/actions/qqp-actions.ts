@@ -186,6 +186,18 @@ export async function atualizarQuantidadeSolicitada(
   return { ok: true };
 }
 
+export async function atualizarFatorEscopo(itemQqpId: string, fatorEscopo: number): Promise<ResultadoAcao> {
+  if (!Number.isFinite(fatorEscopo) || fatorEscopo <= 0) {
+    return { ok: false, error: "O fator de escopo deve ser maior que zero." };
+  }
+  const item = await prisma.itemQQP.update({
+    where: { id: itemQqpId },
+    data: { fatorEscopo },
+  });
+  revalidatePath(`/registros/qqp/${item.qqpId}`);
+  return { ok: true };
+}
+
 export async function criarCabeca(qqpId: string, nome: string): Promise<ResultadoAcao> {
   if (!nome.trim()) return { ok: false, error: "Informe um nome para a cabeça de contratação." };
   const total = await prisma.cabecaContratacao.count({ where: { qqpId } });

@@ -18,6 +18,7 @@ export type ItemQqpView = {
   quantidadeBase: number;
   precoUnitario: number;
   quantidadeSolicitada: number;
+  fatorEscopo: number;
   ordem: number;
   apropriacoes: ApropriacaoView[];
 };
@@ -57,6 +58,7 @@ export async function getQqpDetalhado(qqpId: string) {
     quantidadeBase: Number(item.quantidadeBaseSnapshot),
     precoUnitario: Number(item.precoUnitarioSnapshot),
     quantidadeSolicitada: Number(item.quantidadeSolicitada),
+    fatorEscopo: Number(item.fatorEscopo),
     ordem: item.ordem,
     apropriacoes: item.apropriacoes.map((a) => ({
       tarefaRmCodigo: a.tarefaRm.codigo,

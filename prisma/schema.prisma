@@ -288,6 +288,11 @@ model ItemQQP {
   quantidadeBaseSnapshot   Decimal        @db.Decimal(18, 4)
   precoUnitarioSnapshot    Decimal        @db.Decimal(18, 4)
   quantidadeSolicitada     Decimal        @db.Decimal(18, 4)
+  /// % do item orçado que esta contratação está reivindicando — usado quando o
+  /// mesmo serviço é dividido entre vários fornecedores/QQPs, para comparar o
+  /// desempenho de cada um contra a fatia do orçamento que lhe cabe, não o
+  /// total. Padrão 100% (toda a quantidade orçada pertence a este QQP).
+  fatorEscopo              Decimal        @default(100) @db.Decimal(7, 4)
   ordem                    Int            @default(0)
   createdAt                DateTime       @default(now())
   updatedAt                DateTime       @updatedAt

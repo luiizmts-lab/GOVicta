@@ -7,24 +7,38 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { formatCurrency, formatNumber } from "@/lib/format";
-import { Trash2 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { formatCurrency, formatNumber, formatPercent } from "@/lib/format";
+import { Trash2, Info } from "lucide-react";
 import type { ItemQqpView } from "@/lib/services/qqp";
-import { atualizarQuantidadeSolicitada, removerItem } from "@/app/actions/qqp-actions";
+import { atualizarFatorEscopo, atualizarQuantidadeSolicitada, removerItem } from "@/app/actions/qqp-actions";
 
 export function QuantidadesPanel({ itens }: { itens: ItemQqpView[] }) {
   const [erro, setErro] = useState<string | null>(null);
-  const [valores, setValores] = useState<Record<string, string>>(
+  const [quantidades, setQuantidades] = useState<Record<string, string>>(
     Object.fromEntries(itens.map((i) => [i.id, String(i.quantidadeSolicitada)]))
+  );
+  const [fatores, setFatores] = useState<Record<string, string>>(
+    Object.fromEntries(itens.map((i) => [i.id, String(i.fatorEscopo)]))
   );
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
   function salvarQuantidade(itemId: string) {
-    const valor = Number(valores[itemId]);
+    const valor = Number(quantidades[itemId]);
     setErro(null);
     startTransition(async () => {
       const resultado = await atualizarQuantidadeSolicitada(itemId, valor);
+      if (!resultado.ok) setErro(resultado.error);
+      router.refresh();
+    });
+  }
+
+  function salvarFator(itemId: string) {
+    const valor = Number(fatores[itemId]);
+    setErro(null);
+    startTransition(async () => {
+      const resultado = await atualizarFatorEscopo(itemId, valor);
       if (!resultado.ok) setErro(resultado.error);
       router.refresh();
     });
@@ -37,7 +51,11 @@ export function QuantidadesPanel({ itens }: { itens: ItemQqpView[] }) {
     });
   }
 
-  const totalBase = itens.reduce((acc, i) => acc + i.quantidadeBase * i.precoUnitario, 0);
+  function baseEscopada(item: ItemQqpView) {
+    return (item.quantidadeBase * item.fatorEscopo) / 100;
+  }
+
+  const totalBase = itens.reduce((acc, i) => acc + baseEscopada(i) * i.precoUnitario, 0);
   const totalSolicitado = itens.reduce((acc, i) => acc + i.quantidadeSolicitada * i.precoUnitario, 0);
 
   return (
@@ -48,35 +66,49 @@ export function QuantidadesPanel({ itens }: { itens: ItemQqpView[] }) {
         </Alert>
       )}
 
+      <Alert>
+        <Info className="h-4 w-4" />
+        <AlertDescription>
+          O <strong>fator de escopo</strong> define a fatia do item orçado que esta contratação está reivindicando.
+          Use abaixo de 100% quando o mesmo serviço for dividido entre vários fornecedores/QQPs — o desempenho de
+          cada um é então medido contra a sua fatia, não o orçamento inteiro.
+        </AlertDescription>
+      </Alert>
+
       <Table>
         <TableHeader>
           <TableRow>
             <TableHead>Código</TableHead>
             <TableHead>Descrição</TableHead>
             <TableHead>Un.</TableHead>
-            <TableHead className="text-right">Qtd. base</TableHead>
+            <TableHead className="w-24 text-right">Fator escopo</TableHead>
+            <TableHead className="text-right">Qtd. base (fatia)</TableHead>
             <TableHead className="text-right">Preço ref.</TableHead>
-            <TableHead className="text-right">Total base</TableHead>
+            <TableHead className="text-right">Total base (fatia)</TableHead>
             <TableHead className="w-32 text-right">Qtd. solicitada</TableHead>
             <TableHead className="text-right">Total solicitado</TableHead>
             <TableHead className="text-right">Diferença</TableHead>
+            <TableHead className="text-right">Desempenho</TableHead>
             <TableHead />
           </TableRow>
         </TableHeader>
         <TableBody>
           {itens.length === 0 && (
             <TableRow>
-              <TableCell colSpan={10} className="py-8 text-center text-sm text-muted-foreground">
+              <TableCell colSpan={12} className="py-8 text-center text-sm text-muted-foreground">
                 Nenhum item selecionado ainda — use a aba Seleção.
               </TableCell>
             </TableRow>
           )}
           {itens.map((item) => {
-            const qtd = Number(valores[item.id] ?? item.quantidadeSolicitada);
-            const totalBaseItem = item.quantidadeBase * item.precoUnitario;
+            const qtd = Number(quantidades[item.id] ?? item.quantidadeSolicitada);
+            const fator = Number(fatores[item.id] ?? item.fatorEscopo);
+            const qtdBaseEscopada = (item.quantidadeBase * fator) / 100;
+            const totalBaseItem = qtdBaseEscopada * item.precoUnitario;
             const totalSolicitadoItem = qtd * item.precoUnitario;
             const diferenca = totalSolicitadoItem - totalBaseItem;
-            const acimaDoOrcado = qtd > item.quantidadeBase;
+            const acimaDoOrcado = totalSolicitadoItem > totalBaseItem;
+            const desempenho = totalBaseItem > 0 ? (totalSolicitadoItem / totalBaseItem) * 100 : null;
 
             return (
               <TableRow key={item.id}>
@@ -90,15 +122,37 @@ export function QuantidadesPanel({ itens }: { itens: ItemQqpView[] }) {
                   </div>
                 </TableCell>
                 <TableCell>{item.unidade}</TableCell>
-                <TableCell className="text-right">{formatNumber(item.quantidadeBase)}</TableCell>
+                <TableCell>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    value={fatores[item.id] ?? ""}
+                    onChange={(e) => setFatores((v) => ({ ...v, [item.id]: e.target.value }))}
+                    onBlur={() => salvarFator(item.id)}
+                    disabled={isPending}
+                    className="w-24 text-right"
+                  />
+                </TableCell>
+                <TableCell className="text-right">
+                  {formatNumber(qtdBaseEscopada)}
+                  {fator !== 100 && (
+                    <Tooltip>
+                      <TooltipTrigger className="ml-1 align-middle text-muted-foreground">
+                        <Info className="inline h-3 w-3" />
+                      </TooltipTrigger>
+                      <TooltipContent>Orçado integral: {formatNumber(item.quantidadeBase)}</TooltipContent>
+                    </Tooltip>
+                  )}
+                </TableCell>
                 <TableCell className="text-right">{formatCurrency(item.precoUnitario)}</TableCell>
                 <TableCell className="text-right">{formatCurrency(totalBaseItem)}</TableCell>
                 <TableCell>
                   <Input
                     type="number"
                     step="0.0001"
-                    value={valores[item.id] ?? ""}
-                    onChange={(e) => setValores((v) => ({ ...v, [item.id]: e.target.value }))}
+                    value={quantidades[item.id] ?? ""}
+                    onChange={(e) => setQuantidades((v) => ({ ...v, [item.id]: e.target.value }))}
                     onBlur={() => salvarQuantidade(item.id)}
                     disabled={isPending}
                     className={acimaDoOrcado ? "border-amber-400" : ""}
@@ -107,6 +161,9 @@ export function QuantidadesPanel({ itens }: { itens: ItemQqpView[] }) {
                 <TableCell className="text-right font-medium">{formatCurrency(totalSolicitadoItem)}</TableCell>
                 <TableCell className={`text-right ${diferenca > 0 ? "text-amber-600" : diferenca < 0 ? "text-muted-foreground" : ""}`}>
                   {formatCurrency(diferenca)}
+                </TableCell>
+                <TableCell className={`text-right ${desempenho !== null && desempenho > 100 ? "text-amber-600 font-medium" : ""}`}>
+                  {desempenho !== null ? formatPercent(desempenho) : "—"}
                 </TableCell>
                 <TableCell>
                   <Button variant="ghost" size="icon" onClick={() => excluir(item.id)} disabled={isPending}>
@@ -122,7 +179,7 @@ export function QuantidadesPanel({ itens }: { itens: ItemQqpView[] }) {
       {itens.length > 0 && (
         <div className="flex justify-end gap-6 border-t pt-3 text-sm">
           <span>
-            Total base: <strong>{formatCurrency(totalBase)}</strong>
+            Total base (fatias somadas): <strong>{formatCurrency(totalBase)}</strong>
           </span>
           <span>
             Total solicitado: <strong className="text-emerald-700">{formatCurrency(totalSolicitado)}</strong>

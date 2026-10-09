@@ -42,7 +42,9 @@ export function RevisaoPanel({
 
   const total = itens.reduce((acc, i) => acc + i.quantidadeSolicitada * i.precoUnitario, 0);
   const itensSemApropriacao = itens.filter((i) => i.apropriacoes.length === 0);
-  const itensAcimaDoBase = itens.filter((i) => i.quantidadeSolicitada > i.quantidadeBase);
+  const itensAcimaDoBase = itens.filter(
+    (i) => i.quantidadeSolicitada * i.precoUnitario > ((i.quantidadeBase * i.fatorEscopo) / 100) * i.precoUnitario
+  );
 
   const indiceAtual = FLUXO_STATUS.indexOf(status as (typeof FLUXO_STATUS)[number]);
   const proximoStatus = indiceAtual >= 0 ? FLUXO_STATUS[indiceAtual + 1] : undefined;
@@ -104,8 +106,8 @@ export function RevisaoPanel({
             )}
             {itensAcimaDoBase.length > 0 && (
               <p className="flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4" /> {itensAcimaDoBase.length} item(ns) com quantidade solicitada
-                acima da quantidade orçada de referência.
+                <AlertTriangle className="h-4 w-4" /> {itensAcimaDoBase.length} item(ns) acima da fatia orçada
+                (quantidade orçada × fator de escopo).
               </p>
             )}
           </CardContent>

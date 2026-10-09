@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "ItemQQP" ADD COLUMN     "fatorEscopo" DECIMAL(7,4) NOT NULL DEFAULT 100;

@@ -92,3 +92,37 @@ export function percentualApropriado(apropriacoes: { percentualRateio: Prisma.De
 export function valorApropriacao(item: ItemComValor, percentualRateio: Prisma.Decimal): Prisma.Decimal {
   return valorItemQqp(item).mul(percentualRateio).div(100);
 }
+
+type ItemComFatorEscopo = {
+  quantidadeBaseSnapshot: Prisma.Decimal;
+  precoUnitarioSnapshot: Prisma.Decimal;
+  fatorEscopo: Prisma.Decimal;
+};
+
+/**
+ * Quantidade orçada de referência já reduzida pelo fator de escopo do item.
+ * Existe para o caso de um mesmo serviço orçado ser dividido entre vários
+ * fornecedores/QQPs: cada um reivindica só uma fatia (ex.: 50%) do orçado,
+ * e é contra essa fatia — não o total — que seu desempenho deve ser medido.
+ */
+export function quantidadeBaseEscopada(item: ItemComFatorEscopo): Prisma.Decimal {
+  return item.quantidadeBaseSnapshot.mul(item.fatorEscopo).div(100);
+}
+
+/** Valor orçado de referência já reduzido pelo fator de escopo do item. */
+export function valorBaseEscopado(item: ItemComFatorEscopo): Prisma.Decimal {
+  return quantidadeBaseEscopada(item).mul(item.precoUnitarioSnapshot);
+}
+
+/**
+ * % do valor base escopado que o valor solicitado representa. 100% = exatamente
+ * dentro da fatia orçada; acima disso, a contratação está estourando a fatia
+ * que lhe cabe do orçamento (não necessariamente o orçamento inteiro).
+ */
+export function desempenhoOrcamentoBase(
+  item: ItemComFatorEscopo & { quantidadeSolicitada: Prisma.Decimal }
+): Prisma.Decimal | null {
+  const base = valorBaseEscopado(item);
+  if (base.isZero()) return null;
+  return valorItemQqp(item).div(base).mul(100);
+}
