@@ -1,9 +1,12 @@
+import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Download } from "lucide-react";
+import { Download, UploadCloud } from "lucide-react";
+import type { ImportTipo } from "@/lib/import/types";
 
 type ModeloImportacao = {
+  tipo: ImportTipo;
   arquivo: string;
   titulo: string;
   descricao: string;
@@ -12,6 +15,7 @@ type ModeloImportacao = {
 
 const MODELOS: ModeloImportacao[] = [
   {
+    tipo: "orcamento-executivo",
     arquivo: "orcamento-executivo-modelo.csv",
     titulo: "Orçamento Executivo",
     descricao: "Grupos e tarefas do orçamento aberto da obra, com quantidades e preços unitários.",
@@ -33,6 +37,7 @@ const MODELOS: ModeloImportacao[] = [
     ],
   },
   {
+    tipo: "composicoes",
     arquivo: "composicoes-modelo.csv",
     titulo: "Composições de Custos",
     descricao: "Insumos que formam cada tarefa (um insumo por linha), com coeficiente e preço unitário.",
@@ -50,6 +55,7 @@ const MODELOS: ModeloImportacao[] = [
     ],
   },
   {
+    tipo: "orcamento-rm",
     arquivo: "orcamento-rm-modelo.csv",
     titulo: "Orçamento RM",
     descricao: "Estrutura hierárquica consolidada do TOTVS RM (uma linha por nível, com o código do nível pai).",
@@ -65,6 +71,7 @@ const MODELOS: ModeloImportacao[] = [
     ],
   },
   {
+    tipo: "de-para",
     arquivo: "de-para-modelo.csv",
     titulo: "DE-PARA Orçamentário",
     descricao: "Relacionamento entre tarefas do orçamento executivo e apropriações do RM, com percentual de rateio.",
@@ -76,6 +83,7 @@ const MODELOS: ModeloImportacao[] = [
     ],
   },
   {
+    tipo: "modelos-contratacao",
     arquivo: "modelos-contratacao-modelo.csv",
     titulo: "Modelos de Contratação",
     descricao: "Cadastro dos modelos padronizados usados na exportação dos QQPs para Suprimentos.",
@@ -96,15 +104,14 @@ export default function ImportacaoPage() {
       <div>
         <h1 className="text-lg font-semibold">Importação de Dados</h1>
         <p className="text-sm text-muted-foreground">
-          Modelos de planilha CSV para preparar os dados reais da obra.
+          Baixe o modelo CSV, preencha e importe para esta obra.
         </p>
       </div>
 
       <Alert className="border-amber-300 bg-amber-50 text-amber-800">
         <AlertDescription>
-          Por enquanto esta tela só disponibiliza os <strong>modelos</strong> (cabeçalho + linhas de exemplo) para
-          você preencher. O assistente de upload, mapeamento de colunas e validação (que lê esses CSVs e grava no
-          banco) ainda será construído — avise quando quiser priorizar essa etapa.
+          Importar orçamento executivo ou RM cria uma <strong>nova revisão</strong> para a obra selecionada — a
+          revisão anterior fica preservada no histórico, nunca é sobrescrita.
         </AlertDescription>
       </Alert>
 
@@ -126,14 +133,23 @@ export default function ImportacaoPage() {
                   </code>
                 ))}
               </div>
-              <Button
-                render={<a href={`/templates/${modelo.arquivo}`} download={modelo.arquivo} />}
-                nativeButton={false}
-                variant="outline"
-                className="gap-2"
-              >
-                <Download className="h-4 w-4" /> Baixar modelo CSV
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  render={<a href={`/templates/${modelo.arquivo}`} download={modelo.arquivo} />}
+                  nativeButton={false}
+                  variant="outline"
+                  className="gap-2"
+                >
+                  <Download className="h-4 w-4" /> Baixar modelo
+                </Button>
+                <Button
+                  render={<Link href={`/administracao/importacao/${modelo.tipo}`} />}
+                  nativeButton={false}
+                  className="gap-2 bg-emerald-700 hover:bg-emerald-800"
+                >
+                  <UploadCloud className="h-4 w-4" /> Importar arquivo
+                </Button>
+              </div>
             </CardContent>
           </Card>
         ))}
