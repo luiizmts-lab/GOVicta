@@ -3,9 +3,16 @@ import { prisma } from "@/lib/prisma";
 import { getQqpDetalhado } from "@/lib/services/qqp";
 import { registrarExportacao } from "@/lib/services/modelo";
 import { gerarQqpWorkbook } from "@/lib/services/export-xlsx";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { requireUserId } from "@/lib/auth";
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  let usuarioId: string;
+  try {
+    usuarioId = await requireUserId();
+  } catch {
+    return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
+  }
+
   const { id } = await params;
   const modeloId = request.nextUrl.searchParams.get("modeloId");
 
@@ -35,14 +42,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     modelo
   );
 
-  const supabase = await createSupabaseServerClient();
-  const { data: userData } = await supabase.auth.getUser();
-
   await registrarExportacao({
     registroGestaoId: qqp.registro.id,
     modeloContratacaoId: modelo.id,
     versaoModelo: modelo.versao,
-    usuarioId: userData.user?.id ?? null,
+    usuarioId,
   });
 
   const buffer = await workbook.xlsx.writeBuffer();

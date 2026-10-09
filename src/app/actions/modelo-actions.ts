@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { requireUserId } from "@/lib/auth";
 import type { LayoutCabecaExportacao } from "@prisma/client";
 
 export async function criarModelo(input: {
@@ -12,6 +13,7 @@ export async function criarModelo(input: {
   mostrarPrecos: boolean;
   layoutCabeca: LayoutCabecaExportacao;
 }) {
+  await requireUserId();
   await prisma.modeloContratacao.create({
     data: {
       codigo: input.codigo.trim(),
@@ -27,6 +29,7 @@ export async function criarModelo(input: {
 }
 
 export async function alternarStatusModelo(modeloId: string, status: "ATIVO" | "INATIVO") {
+  await requireUserId();
   await prisma.modeloContratacao.update({ where: { id: modeloId }, data: { status } });
   revalidatePath("/administracao/modelos");
 }

@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getObraAtiva, getRevisaoAtiva } from "@/lib/obra";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { requireUserId } from "@/lib/auth";
 import type { StatusRegistro } from "@prisma/client";
 
 async function proximoNumeroQqp(obraId: string) {
@@ -17,6 +17,7 @@ function erroNovoQqp(mensagem: string): never {
 }
 
 export async function criarRegistroQqp(formData: FormData) {
+  const usuarioId = await requireUserId();
   const descricao = String(formData.get("descricao") ?? "").trim();
   const objetivo = String(formData.get("objetivo") ?? "").trim();
   const resumoObjeto = String(formData.get("resumoObjeto") ?? "").trim();
@@ -33,9 +34,6 @@ export async function criarRegistroQqp(formData: FormData) {
 
   const numero = await proximoNumeroQqp(obra.id);
 
-  const supabase = await createSupabaseServerClient();
-  const { data: userData } = await supabase.auth.getUser();
-
   const registro = await prisma.registroGestao.create({
     data: {
       obraId: obra.id,
@@ -45,7 +43,7 @@ export async function criarRegistroQqp(formData: FormData) {
       objetivo: objetivo || null,
       resumoObjeto: resumoObjeto || null,
       dataSolicitacao: new Date(),
-      solicitanteId: userData.user?.id ?? null,
+      solicitanteId: usuarioId,
       status: "RASCUNHO",
       qqp: {
         create: {
@@ -74,6 +72,7 @@ export async function adicionarTarefaCompleta(
   qqpId: string,
   tarefaExecutivaId: string
 ): Promise<ResultadoAcao> {
+  await requireUserId();
   const existentes = await assertTarefaLivreDeConflito(qqpId, tarefaExecutivaId);
   if (existentes.length > 0) {
     return {
@@ -110,6 +109,7 @@ export async function adicionarInsumo(
   tarefaExecutivaId: string,
   itemComposicaoId: string
 ): Promise<ResultadoAcao> {
+  await requireUserId();
   const existentes = await assertTarefaLivreDeConflito(qqpId, tarefaExecutivaId);
   if (existentes.some((e) => e.itemComposicaoId === null)) {
     return {
@@ -167,6 +167,7 @@ async function copiarApropriacoesDeParaItem(itemQqpId: string, tarefaExecutivaId
 }
 
 export async function removerItem(itemQqpId: string) {
+  await requireUserId();
   const item = await prisma.itemQQP.delete({ where: { id: itemQqpId } });
   revalidatePath(`/registros/qqp/${item.qqpId}`);
 }
@@ -175,6 +176,7 @@ export async function atualizarQuantidadeSolicitada(
   itemQqpId: string,
   quantidade: number
 ): Promise<ResultadoAcao> {
+  await requireUserId();
   if (!Number.isFinite(quantidade) || quantidade < 0) {
     return { ok: false, error: "Quantidade inválida." };
   }
@@ -187,6 +189,7 @@ export async function atualizarQuantidadeSolicitada(
 }
 
 export async function atualizarFatorEscopo(itemQqpId: string, fatorEscopo: number): Promise<ResultadoAcao> {
+  await requireUserId();
   if (!Number.isFinite(fatorEscopo) || fatorEscopo <= 0) {
     return { ok: false, error: "O fator de escopo deve ser maior que zero." };
   }
@@ -199,6 +202,7 @@ export async function atualizarFatorEscopo(itemQqpId: string, fatorEscopo: numbe
 }
 
 export async function criarCabeca(qqpId: string, nome: string): Promise<ResultadoAcao> {
+  await requireUserId();
   if (!nome.trim()) return { ok: false, error: "Informe um nome para a cabeça de contratação." };
   const total = await prisma.cabecaContratacao.count({ where: { qqpId } });
   const codigo = `CAB-${String(total + 1).padStart(2, "0")}`;
@@ -210,6 +214,7 @@ export async function criarCabeca(qqpId: string, nome: string): Promise<Resultad
 }
 
 export async function renomearCabeca(cabecaId: string, nome: string): Promise<ResultadoAcao> {
+  await requireUserId();
   if (!nome.trim()) return { ok: false, error: "O nome da cabeça não pode ser vazio." };
   const cabeca = await prisma.cabecaContratacao.update({
     where: { id: cabecaId },
@@ -220,6 +225,7 @@ export async function renomearCabeca(cabecaId: string, nome: string): Promise<Re
 }
 
 export async function excluirCabeca(cabecaId: string) {
+  await requireUserId();
   const cabeca = await prisma.cabecaContratacao.findUniqueOrThrow({ where: { id: cabecaId } });
   await prisma.$transaction([
     prisma.itemQQP.updateMany({ where: { cabecaId }, data: { cabecaId: null } }),
@@ -229,6 +235,7 @@ export async function excluirCabeca(cabecaId: string) {
 }
 
 export async function moverItemParaCabeca(itemQqpId: string, cabecaId: string | null) {
+  await requireUserId();
   const item = await prisma.itemQQP.update({
     where: { id: itemQqpId },
     data: { cabecaId },
@@ -237,6 +244,7 @@ export async function moverItemParaCabeca(itemQqpId: string, cabecaId: string | 
 }
 
 export async function atualizarStatusRegistro(registroGestaoId: string, status: StatusRegistro) {
+  await requireUserId();
   const registro = await prisma.registroGestao.update({
     where: { id: registroGestaoId },
     data: { status },
@@ -247,6 +255,7 @@ export async function atualizarStatusRegistro(registroGestaoId: string, status: 
 }
 
 export async function atualizarObservacoesQqp(qqpId: string, observacoes: string) {
+  await requireUserId();
   await prisma.qQP.update({ where: { id: qqpId }, data: { observacoes } });
   revalidatePath(`/registros/qqp/${qqpId}`);
 }

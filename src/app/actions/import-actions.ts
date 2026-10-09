@@ -5,9 +5,16 @@ import { parseCsvTexto, normalizarNomeColuna } from "@/lib/import/parse";
 import { COLUNAS } from "@/lib/import/schemas";
 import { validarImportacao } from "@/lib/import/validar";
 import { importarDados } from "@/lib/import/importar";
+import { requireUserId } from "@/lib/auth";
 import type { ImportTipo, LinhaBruta, LinhaValidada, Mapeamento } from "@/lib/import/types";
 
 export async function analisarArquivo(tipo: ImportTipo, formData: FormData) {
+  try {
+    await requireUserId();
+  } catch {
+    return { ok: false as const, erro: "Sessão expirada. Faça login novamente." };
+  }
+
   const arquivo = formData.get("arquivo");
   if (!(arquivo instanceof File)) {
     return { ok: false as const, erro: "Nenhum arquivo enviado." };
@@ -46,6 +53,7 @@ export async function validarArquivo(
   linhasBrutas: LinhaBruta[],
   mapeamento: Mapeamento
 ) {
+  await requireUserId();
   return validarImportacao(tipo, linhasBrutas, mapeamento, obraId);
 }
 
@@ -62,6 +70,12 @@ export async function confirmarImportacao(
   obraId: string | null,
   linhasValidadas: LinhaValidada[]
 ) {
+  try {
+    await requireUserId();
+  } catch {
+    return { ok: false as const, erro: "Sessão expirada. Faça login novamente." };
+  }
+
   if (linhasValidadas.some((l) => l.erros.length > 0)) {
     return { ok: false as const, erro: "Existem linhas com erro — corrija o arquivo e tente novamente." };
   }
