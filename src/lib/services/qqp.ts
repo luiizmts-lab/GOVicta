@@ -86,6 +86,7 @@ export async function getQqpDetalhado(qqpId: string) {
       status: qqp.registroGestao.status,
       dataSolicitacao: qqp.registroGestao.dataSolicitacao,
       obraId: qqp.registroGestao.obraId,
+      obraCodigo: qqp.registroGestao.obra.codigo,
       obraNome: qqp.registroGestao.obra.nome,
       solicitante: qqp.registroGestao.solicitante?.nome ?? qqp.registroGestao.solicitante?.email ?? null,
     },

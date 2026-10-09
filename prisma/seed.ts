@@ -4,7 +4,7 @@
  * imagens) sejam enviados e um importador real seja construído (Fase 1
  * tardia / backlog do módulo "Importação de dados Excel").
  */
-import { PrismaClient, TipoInsumo, StatusDePara } from "@prisma/client";
+import { PrismaClient, TipoInsumo, StatusDePara, LayoutCabecaExportacao } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -60,6 +60,8 @@ async function main() {
 
   // Limpeza (ordem respeita FKs) — seguro porque este banco é só de demo local.
   await prisma.auditLog.deleteMany();
+  await prisma.exportacaoDocumento.deleteMany();
+  await prisma.modeloContratacao.deleteMany();
   await prisma.apropriacaoItemQQP.deleteMany();
   await prisma.itemQQP.deleteMany();
   await prisma.cabecaContratacao.deleteMany();
@@ -893,6 +895,40 @@ async function main() {
       tarefaRmId: rm0501.id,
       percentualRateio: 100,
       valorRateado: Number(itemBloco.quantidadeSolicitada) * Number(itemBloco.precoUnitarioSnapshot),
+    },
+  });
+
+  // --- Modelos de contratação (demonstrativos — os 47 reais entram quando a
+  // empresa enviar os arquivos; enquanto isso, 3 layouts genéricos cobrem os
+  // casos descritos no refinamento: detalhado, título de seção e sem preços).
+  await prisma.modeloContratacao.create({
+    data: {
+      codigo: "MOD-DEMO-01",
+      nome: "Cotação Padrão (Demonstrativo)",
+      categoria: "Geral",
+      descricao: "Cabeças detalhadas com itens e preços de referência visíveis.",
+      mostrarPrecos: true,
+      layoutCabeca: LayoutCabecaExportacao.DETALHADO,
+    },
+  });
+  await prisma.modeloContratacao.create({
+    data: {
+      codigo: "MOD-DEMO-02",
+      nome: "Cotação sem Preço de Referência (Demonstrativo)",
+      categoria: "Suprimentos",
+      descricao: "Mesmo layout detalhado, mas oculta os preços de referência para cotação cega.",
+      mostrarPrecos: false,
+      layoutCabeca: LayoutCabecaExportacao.DETALHADO,
+    },
+  });
+  await prisma.modeloContratacao.create({
+    data: {
+      codigo: "MOD-DEMO-03",
+      nome: "Itens Analíticos sem Agrupamento (Demonstrativo)",
+      categoria: "Geral",
+      descricao: "Lista todos os itens do QQP individualmente, ignorando as cabeças de contratação.",
+      mostrarPrecos: true,
+      layoutCabeca: LayoutCabecaExportacao.SEM_AGRUPAMENTO,
     },
   });
 

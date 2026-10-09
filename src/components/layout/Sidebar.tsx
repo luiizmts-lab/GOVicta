@@ -8,6 +8,7 @@ import {
   Building2,
   ArrowLeftRight,
   ClipboardList,
+  FileSpreadsheet,
   Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -18,6 +19,7 @@ const ITENS = [
   { href: "/orcamento-rm", label: "Orçamento RM", icon: Building2 },
   { href: "/de-para", label: "DE-PARA Orçamentário", icon: ArrowLeftRight },
   { href: "/registros", label: "Registros / QQP", icon: ClipboardList },
+  { href: "/administracao/modelos", label: "Modelos de Contratação", icon: FileSpreadsheet },
   { href: "/administracao/obras", label: "Administração", icon: Settings },
 ];
 

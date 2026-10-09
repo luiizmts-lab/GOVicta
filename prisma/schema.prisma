@@ -1,9 +1,9 @@
-// Schema v1 do sistema de gestão orçamentária VICTA.
-// Cobre apenas as entidades usadas na primeira versão navegável (ver
-// C:\Users\Luiz\.claude\plans\starry-sniffing-eagle.md). Modelos de
-// contratação, exportação XLSX, contratos e aditivos (fases 3-4) ainda não
-// têm tabela própria; TipoRegistro.ADITIVO fica reservado no enum para
-// quando essa fase chegar, sem telas ou lógica associadas por enquanto.
+// Schema do sistema de gestão orçamentária VICTA.
+// V1 (ver C:\Users\Luiz\.claude\plans\starry-sniffing-eagle.md) cobriu orçamento,
+// DE-PARA e o fluxo de QQP com cabeças. Fase 3 acrescenta o cadastro de modelos
+// de contratação e a exportação XLSX (ModeloContratacao, ExportacaoDocumento).
+// Contratos e aditivos (fase 4) ainda não têm tabela própria; TipoRegistro.ADITIVO
+// fica reservado no enum para quando essa fase chegar.
 
 generator client {
   provider = "prisma-client-js"
@@ -62,6 +62,19 @@ enum TipoOrigemItem {
   INSUMO
 }
 
+enum StatusModelo {
+  ATIVO
+  INATIVO
+}
+
+/// Como a exportação XLSX apresenta as cabeças de contratação — ver seção 7
+/// do documento de refinamento (cabeças são só agregadores financeiros).
+enum LayoutCabecaExportacao {
+  DETALHADO
+  TITULO_SECAO
+  SEM_AGRUPAMENTO
+}
+
 model Profile {
   id        String   @id
   email     String   @unique
@@ -70,6 +83,7 @@ model Profile {
 
   registrosGestao RegistroGestao[]
   auditLogs       AuditLog[]
+  exportacoes     ExportacaoDocumento[]
 }
 
 model Obra {
@@ -239,9 +253,10 @@ model RegistroGestao {
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
 
-  obra       Obra     @relation(fields: [obraId], references: [id])
-  solicitante Profile? @relation(fields: [solicitanteId], references: [id])
-  qqp        QQP?
+  obra        Obra                  @relation(fields: [obraId], references: [id])
+  solicitante Profile?              @relation(fields: [solicitanteId], references: [id])
+  qqp         QQP?
+  exportacoes ExportacaoDocumento[]
 
   @@unique([obraId, numero])
 }
@@ -326,4 +341,38 @@ model AuditLog {
   detalhe    Json?
 
   usuario Profile? @relation(fields: [usuarioId], references: [id])
+}
+
+/// Cadastro dos modelos padronizados de contratação da empresa (47 no real).
+/// Enquanto os arquivos reais não são enviados, os registros ficam marcados
+/// `demonstrativo = true` e usam um layout genérico de exportação — nunca
+/// reproduzem um dos 47 modelos reais sem o arquivo de referência.
+model ModeloContratacao {
+  id             String                  @id @default(cuid())
+  codigo         String                  @unique
+  nome           String
+  categoria      String?
+  descricao      String?
+  versao         Int                     @default(1)
+  status         StatusModelo            @default(ATIVO)
+  mostrarPrecos  Boolean                 @default(true)
+  layoutCabeca   LayoutCabecaExportacao  @default(DETALHADO)
+  demonstrativo  Boolean                 @default(true)
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+
+  exportacoes ExportacaoDocumento[]
+}
+
+model ExportacaoDocumento {
+  id                  String   @id @default(cuid())
+  registroGestaoId    String
+  modeloContratacaoId String
+  versaoModelo        Int
+  usuarioId           String?
+  dataGeracao         DateTime @default(now())
+
+  registroGestao    RegistroGestao    @relation(fields: [registroGestaoId], references: [id])
+  modeloContratacao ModeloContratacao @relation(fields: [modeloContratacaoId], references: [id])
+  usuario           Profile?          @relation(fields: [usuarioId], references: [id])
 }

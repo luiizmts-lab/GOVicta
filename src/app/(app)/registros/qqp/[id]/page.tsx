@@ -2,12 +2,14 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getQqpDetalhado } from "@/lib/services/qqp";
 import { getOrcamentoExecutivoTree } from "@/lib/services/orcamento";
+import { listModelosAtivos, listExportacoes } from "@/lib/services/modelo";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { SelecaoPanel } from "@/components/qqp/SelecaoPanel";
 import { QuantidadesPanel } from "@/components/qqp/QuantidadesPanel";
 import { CabecasPanel } from "@/components/qqp/CabecasPanel";
 import { RevisaoPanel } from "@/components/qqp/RevisaoPanel";
+import { ExportacaoPanel } from "@/components/qqp/ExportacaoPanel";
 import { STATUS_REGISTRO_LABEL } from "@/lib/status-labels";
 import { ChevronLeft } from "lucide-react";
 
@@ -16,7 +18,11 @@ export default async function QqpDetalhePage({ params }: { params: Promise<{ id:
   const qqp = await getQqpDetalhado(id);
   if (!qqp) notFound();
 
-  const grupos = await getOrcamentoExecutivoTree(qqp.revisaoOrcamentoId);
+  const [grupos, modelos, exportacoes] = await Promise.all([
+    getOrcamentoExecutivoTree(qqp.revisaoOrcamentoId),
+    listModelosAtivos(),
+    listExportacoes(qqp.registro.id),
+  ]);
   const itensAdicionados = qqp.itens.map((i) => ({
     tarefaExecutivaId: i.tarefaExecutivaId,
     itemComposicaoId: i.itemComposicaoId,
@@ -43,6 +49,7 @@ export default async function QqpDetalhePage({ params }: { params: Promise<{ id:
           <TabsTrigger value="quantidades">2. Ajuste de quantidades</TabsTrigger>
           <TabsTrigger value="cabecas">3. Cabeças de contratação</TabsTrigger>
           <TabsTrigger value="revisao">4. Revisão</TabsTrigger>
+          <TabsTrigger value="exportacao">5. Exportação</TabsTrigger>
         </TabsList>
 
         <TabsContent value="selecao" className="mt-4">
@@ -66,6 +73,10 @@ export default async function QqpDetalhePage({ params }: { params: Promise<{ id:
             itens={qqp.itens}
             cabecas={qqp.cabecas}
           />
+        </TabsContent>
+
+        <TabsContent value="exportacao" className="mt-4">
+          <ExportacaoPanel qqpId={qqp.id} modelos={modelos} exportacoes={exportacoes} />
         </TabsContent>
       </Tabs>
     </div>
