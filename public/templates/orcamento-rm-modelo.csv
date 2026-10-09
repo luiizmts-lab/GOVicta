@@ -1,0 +1,5 @@
+﻿codigo,descricao,codigo_apropriacao,codigo_pai,nivel_hierarquico,unidade,quantidade,custo_total
+02,Movimento de Terra,02,,1,vb,1,210000.00
+02.01,Terraplenagem,02.01,02,2,vb,1,210000.00
+03,Fundações,03,,1,vb,1,345000.00
+03.01,Fundações — Execução,03.01,03,2,vb,1,345000.00

@@ -1,0 +1,4 @@
+﻿tarefa_codigo,composicao_codigo,composicao_descricao,insumo_codigo,insumo_descricao,insumo_unidade,insumo_tipo,banco_origem,coeficiente,preco_unitario
+T-0201,C-0201,Escavação mecanizada,EQ-ESCAV,Escavadeira hidráulica 20t,h,EQUIPAMENTO,SINAPI,0.08,95.00
+T-0201,C-0201,Escavação mecanizada,MO-OPESCAV,Operador de escavadeira,h,MAO_DE_OBRA,SINAPI,0.08,32.00
+T-0302,C-0302,Concreto para fundação,MAT-CONCUS25,Concreto usinado fck 25 MPa,m³,MATERIAL,SINAPI,1.0,480.00

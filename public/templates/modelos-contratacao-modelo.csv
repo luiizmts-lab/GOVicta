@@ -1,0 +1,3 @@
+﻿codigo,nome,categoria,descricao,mostrar_precos,layout_cabeca
+MOD-001,Cotação de Serviços de Terraplenagem,Terraplenagem,Modelo padrão para contratação de terraplenagem,SIM,DETALHADO
+MOD-002,Cotação sem Preço de Referência,Suprimentos,Usado quando o fornecedor não deve ver o preço de referência,NAO,DETALHADO

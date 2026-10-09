@@ -9,6 +9,7 @@ import {
   ArrowLeftRight,
   ClipboardList,
   FileSpreadsheet,
+  UploadCloud,
   Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -20,6 +21,7 @@ const ITENS = [
   { href: "/de-para", label: "DE-PARA Orçamentário", icon: ArrowLeftRight },
   { href: "/registros", label: "Registros / QQP", icon: ClipboardList },
   { href: "/administracao/modelos", label: "Modelos de Contratação", icon: FileSpreadsheet },
+  { href: "/administracao/importacao", label: "Importação de Dados", icon: UploadCloud },
   { href: "/administracao/obras", label: "Administração", icon: Settings },
 ];
 

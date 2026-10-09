@@ -1,0 +1,4 @@
+﻿grupo_codigo,grupo_nome,tarefa_codigo,tarefa_descricao,unidade,quantidade_orcada,preco_unitario_sem_bdi,preco_unitario_com_bdi,custo_mao_obra,custo_mao_obra_terceirizada,custo_servicos,custo_materiais,codigo_apropriacao_rm,descricao_apropriacao
+02,Terraplenagem,T-0201,Escavação mecanizada,m³,5000,9.50,10.00,,,50000,,02.01,Terraplenagem
+02,Terraplenagem,T-0202,Carga mecanizada de material,m³,5000,5.70,6.00,,,30000,,02.01,Terraplenagem
+03,Fundações,T-0302,Concreto para fundação (sapatas),m³,320,580.00,610.00,,41600,,153600,03.01,Fundações
