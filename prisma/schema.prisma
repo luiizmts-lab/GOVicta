@@ -1,0 +1,329 @@
+// Schema v1 do sistema de gestão orçamentária VICTA.
+// Cobre apenas as entidades usadas na primeira versão navegável (ver
+// C:\Users\Luiz\.claude\plans\starry-sniffing-eagle.md). Modelos de
+// contratação, exportação XLSX, contratos e aditivos (fases 3-4) ainda não
+// têm tabela própria; TipoRegistro.ADITIVO fica reservado no enum para
+// quando essa fase chegar, sem telas ou lógica associadas por enquanto.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum StatusObra {
+  ATIVA
+  CONCLUIDA
+  SUSPENSA
+}
+
+enum TipoOrcamento {
+  EXECUTIVO
+  RM
+}
+
+enum TipoInsumo {
+  MATERIAL
+  MAO_DE_OBRA
+  MAO_DE_OBRA_TERCEIRIZADA
+  EQUIPAMENTO
+  SERVICO
+  OUTRO
+}
+
+enum StatusDePara {
+  CONCILIADO
+  PARCIAL
+  PENDENTE
+}
+
+enum TipoRegistro {
+  QQP
+  ADITIVO
+}
+
+enum StatusRegistro {
+  RASCUNHO
+  EM_VALIDACAO
+  VALIDADO
+  ENVIADO_SUPRIMENTOS
+  EM_COTACAO
+  CONTRATADO
+  DEVOLVIDO
+  CANCELADO
+  SUBSTITUIDO
+}
+
+enum TipoOrigemItem {
+  TAREFA
+  INSUMO
+}
+
+model Profile {
+  id        String   @id
+  email     String   @unique
+  nome      String?
+  createdAt DateTime @default(now())
+
+  registrosGestao RegistroGestao[]
+  auditLogs       AuditLog[]
+}
+
+model Obra {
+  id               String     @id @default(cuid())
+  codigo           String     @unique
+  nome             String
+  codigoRm         String?
+  responsavel      String?
+  status           StatusObra @default(ATIVA)
+  dataImportacao   DateTime?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  revisoes        RevisaoOrcamentaria[]
+  registrosGestao RegistroGestao[]
+}
+
+model RevisaoOrcamentaria {
+  id             String        @id @default(cuid())
+  obraId         String
+  tipoOrcamento  TipoOrcamento
+  numeroRevisao  Int
+  dataReferencia DateTime
+  ativa          Boolean       @default(false)
+  status         String        @default("ATIVA")
+  createdAt      DateTime      @default(now())
+
+  obra              Obra                @relation(fields: [obraId], references: [id])
+  grupos            GrupoOrcamentario[]
+  tarefasExecutivas TarefaExecutiva[]
+  tarefasRM         TarefaRM[]
+  qqps              QQP[]
+
+  @@unique([obraId, tipoOrcamento, numeroRevisao])
+}
+
+model GrupoOrcamentario {
+  id         String  @id @default(cuid())
+  revisaoId  String
+  codigo     String
+  nome       String
+  grupoPaiId String?
+
+  revisao   RevisaoOrcamentaria @relation(fields: [revisaoId], references: [id])
+  grupoPai  GrupoOrcamentario?  @relation("GrupoHierarquia", fields: [grupoPaiId], references: [id])
+  subgrupos GrupoOrcamentario[] @relation("GrupoHierarquia")
+  tarefas   TarefaExecutiva[]
+
+  @@unique([revisaoId, codigo])
+}
+
+model TarefaExecutiva {
+  id                       String   @id @default(cuid())
+  revisaoId                String
+  grupoId                  String?
+  codigo                   String
+  descricao                String
+  unidade                  String
+  quantidadeOrcada         Decimal  @db.Decimal(18, 4)
+  precoUnitarioSemBdi      Decimal? @db.Decimal(18, 4)
+  precoUnitarioComBdi      Decimal  @db.Decimal(18, 4)
+  valorTotal               Decimal  @db.Decimal(18, 2)
+  custoMaoObra             Decimal? @db.Decimal(18, 2)
+  custoMaoObraTerceirizada Decimal? @db.Decimal(18, 2)
+  custoServicos            Decimal? @db.Decimal(18, 2)
+  custoMateriais           Decimal? @db.Decimal(18, 2)
+  codigoApropriacaoRm      String?
+  descricaoApropriacao     String?
+  participacaoPercentual   Decimal? @db.Decimal(7, 4)
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  revisao      RevisaoOrcamentaria  @relation(fields: [revisaoId], references: [id])
+  grupo        GrupoOrcamentario?   @relation(fields: [grupoId], references: [id])
+  composicoes  Composicao[]
+  deParas      DeParaOrcamentario[]
+  itensQqp     ItemQQP[]
+
+  @@unique([revisaoId, codigo])
+}
+
+model Composicao {
+  id                String @id @default(cuid())
+  tarefaExecutivaId String
+  codigo            String
+  descricao         String
+
+  tarefaExecutiva TarefaExecutiva  @relation(fields: [tarefaExecutivaId], references: [id])
+  itens           ItemComposicao[]
+
+  @@unique([tarefaExecutivaId, codigo])
+}
+
+model Insumo {
+  id          String     @id @default(cuid())
+  codigo      String     @unique
+  descricao   String
+  unidade     String
+  tipo        TipoInsumo
+  bancoOrigem String?
+
+  itensComposicao ItemComposicao[]
+}
+
+model ItemComposicao {
+  id            String  @id @default(cuid())
+  composicaoId  String
+  insumoId      String
+  coeficiente   Decimal @db.Decimal(18, 6)
+  precoUnitario Decimal @db.Decimal(18, 4)
+  custoParcial  Decimal @db.Decimal(18, 4)
+
+  composicao Composicao @relation(fields: [composicaoId], references: [id])
+  insumo     Insumo     @relation(fields: [insumoId], references: [id])
+  itensQqp   ItemQQP[]
+
+  @@unique([composicaoId, insumoId])
+}
+
+model TarefaRM {
+  id                 String   @id @default(cuid())
+  revisaoId          String
+  codigo             String
+  descricao          String
+  codigoApropriacao  String
+  unidade            String
+  quantidade         Decimal  @db.Decimal(18, 4)
+  custoTotal         Decimal  @db.Decimal(18, 2)
+  tarefaPaiId        String?
+  nivelHierarquico   Int
+
+  revisao           RevisaoOrcamentaria  @relation(fields: [revisaoId], references: [id])
+  tarefaPai         TarefaRM?            @relation("TarefaRMHierarquia", fields: [tarefaPaiId], references: [id])
+  subTarefas        TarefaRM[]           @relation("TarefaRMHierarquia")
+  deParas           DeParaOrcamentario[]
+  apropriacoesItens ApropriacaoItemQQP[]
+
+  @@unique([revisaoId, codigo])
+}
+
+model DeParaOrcamentario {
+  id                String       @id @default(cuid())
+  tarefaExecutivaId String
+  tarefaRmId        String
+  percentualRateio  Decimal      @db.Decimal(7, 4)
+  valorRateado      Decimal      @db.Decimal(18, 2)
+  status            StatusDePara @default(PENDENTE)
+  origemMapeamento  String?
+
+  tarefaExecutiva TarefaExecutiva @relation(fields: [tarefaExecutivaId], references: [id])
+  tarefaRm        TarefaRM        @relation(fields: [tarefaRmId], references: [id])
+
+  @@unique([tarefaExecutivaId, tarefaRmId])
+}
+
+model RegistroGestao {
+  id               String         @id @default(cuid())
+  obraId           String
+  numero           String
+  tipoRegistro     TipoRegistro   @default(QQP)
+  descricao        String
+  objetivo         String?
+  resumoObjeto     String?
+  solicitanteId    String?
+  dataSolicitacao  DateTime
+  status           StatusRegistro @default(RASCUNHO)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  obra       Obra     @relation(fields: [obraId], references: [id])
+  solicitante Profile? @relation(fields: [solicitanteId], references: [id])
+  qqp        QQP?
+
+  @@unique([obraId, numero])
+}
+
+model QQP {
+  id                  String   @id @default(cuid())
+  registroGestaoId    String   @unique
+  revisaoOrcamentoId  String
+  observacoes         String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  registroGestao    RegistroGestao      @relation(fields: [registroGestaoId], references: [id])
+  revisaoOrcamento  RevisaoOrcamentaria @relation(fields: [revisaoOrcamentoId], references: [id])
+  itens             ItemQQP[]
+  cabecas           CabecaContratacao[]
+}
+
+model ItemQQP {
+  id                       String         @id @default(cuid())
+  qqpId                    String
+  cabecaId                 String?
+  tipoOrigem               TipoOrigemItem
+  tarefaExecutivaId        String
+  itemComposicaoId         String?
+  codigoOrigemSnapshot     String
+  descricaoSnapshot        String
+  unidadeSnapshot          String
+  quantidadeBaseSnapshot   Decimal        @db.Decimal(18, 4)
+  precoUnitarioSnapshot    Decimal        @db.Decimal(18, 4)
+  quantidadeSolicitada     Decimal        @db.Decimal(18, 4)
+  ordem                    Int            @default(0)
+  createdAt                DateTime       @default(now())
+  updatedAt                DateTime       @updatedAt
+
+  qqp             QQP                  @relation(fields: [qqpId], references: [id])
+  cabeca          CabecaContratacao?   @relation(fields: [cabecaId], references: [id])
+  tarefaExecutiva TarefaExecutiva      @relation(fields: [tarefaExecutivaId], references: [id])
+  itemComposicao  ItemComposicao?      @relation(fields: [itemComposicaoId], references: [id])
+  apropriacoes    ApropriacaoItemQQP[]
+
+  @@unique([qqpId, tarefaExecutivaId, itemComposicaoId])
+}
+
+model CabecaContratacao {
+  id           String   @id @default(cuid())
+  qqpId        String
+  codigo       String
+  nome         String
+  descricao    String?
+  ordem        Int      @default(0)
+  observacoes  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  qqp   QQP       @relation(fields: [qqpId], references: [id])
+  itens ItemQQP[]
+
+  @@unique([qqpId, codigo])
+}
+
+model ApropriacaoItemQQP {
+  id               String  @id @default(cuid())
+  itemQqpId        String
+  tarefaRmId       String
+  percentualRateio Decimal @db.Decimal(7, 4)
+  valorRateado     Decimal @db.Decimal(18, 2)
+
+  itemQqp  ItemQQP  @relation(fields: [itemQqpId], references: [id], onDelete: Cascade)
+  tarefaRm TarefaRM @relation(fields: [tarefaRmId], references: [id])
+
+  @@unique([itemQqpId, tarefaRmId])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  entidade   String
+  entidadeId String
+  acao       String
+  usuarioId  String?
+  dataHora   DateTime @default(now())
+  detalhe    Json?
+
+  usuario Profile? @relation(fields: [usuarioId], references: [id])
+}
